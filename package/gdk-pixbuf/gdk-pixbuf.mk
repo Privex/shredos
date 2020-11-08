@@ -5,7 +5,7 @@
 ################################################################################
 
 GDK_PIXBUF_VERSION_MAJOR = 2.36
-GDK_PIXBUF_VERSION = $(GDK_PIXBUF_VERSION_MAJOR).10
+GDK_PIXBUF_VERSION = $(GDK_PIXBUF_VERSION_MAJOR).12
 GDK_PIXBUF_SOURCE = gdk-pixbuf-$(GDK_PIXBUF_VERSION).tar.xz
 GDK_PIXBUF_SITE = http://ftp.gnome.org/pub/gnome/sources/gdk-pixbuf/$(GDK_PIXBUF_VERSION_MAJOR)
 GDK_PIXBUF_LICENSE = LGPL-2.0+
@@ -24,6 +24,14 @@ HOST_GDK_PIXBUF_CONF_ENV = \
 	gio_can_sniff=no
 
 GDK_PIXBUF_CONF_OPTS = --disable-glibtest
+HOST_GDK_PIXBUF_CONF_OPTS = --disable-introspection
+
+ifeq ($(BR2_PACKAGE_GOBJECT_INTROSPECTION),y)
+GDK_PIXBUF_CONF_OPTS += --enable-introspection
+GDK_PIXBUF_DEPENDENCIES += gobject-introspection
+else
+GDK_PIXBUF_CONF_OPTS += --disable-introspection
+endif
 
 ifneq ($(BR2_PACKAGE_LIBPNG),y)
 GDK_PIXBUF_CONF_OPTS += --without-libpng
@@ -64,7 +72,7 @@ define GDK_PIXBUF_UPDATE_CACHE
 	GDK_PIXBUF_MODULEDIR=$(HOST_DIR)/lib/gdk-pixbuf-2.0/2.10.0/loaders \
 		$(HOST_DIR)/bin/gdk-pixbuf-query-loaders \
 		> $(TARGET_DIR)/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache
-	$(SED) "s,$(HOST_DIR),,g" \
+	$(SED) "s,$(HOST_DIR)/lib,/usr/lib,g" \
 		$(TARGET_DIR)/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache
 endef
 GDK_PIXBUF_POST_INSTALL_TARGET_HOOKS += GDK_PIXBUF_UPDATE_CACHE

@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-PULSEAUDIO_VERSION = 11.1
+PULSEAUDIO_VERSION = 13.0
 PULSEAUDIO_SOURCE = pulseaudio-$(PULSEAUDIO_VERSION).tar.xz
 PULSEAUDIO_SITE = http://freedesktop.org/software/pulseaudio/releases
 PULSEAUDIO_INSTALL_STAGING = YES
@@ -13,18 +13,25 @@ PULSEAUDIO_LICENSE_FILES = LICENSE GPL LGPL
 PULSEAUDIO_CONF_OPTS = \
 	--disable-default-build-tests \
 	--disable-legacy-database-entry-format \
-	--disable-manpages
+	--disable-manpages \
+	--disable-running-from-build-tree
 
 PULSEAUDIO_DEPENDENCIES = \
-	host-pkgconf libtool libsndfile speex host-intltool \
-	$(if $(BR2_PACKAGE_LIBSAMPLERATE),libsamplerate) \
-	$(if $(BR2_PACKAGE_ALSA_LIB),alsa-lib) \
+	host-pkgconf libtool libsndfile speex \
+	$(TARGET_NLS_DEPENDENCIES) \
 	$(if $(BR2_PACKAGE_LIBGLIB2),libglib2) \
 	$(if $(BR2_PACKAGE_AVAHI_DAEMON),avahi) \
 	$(if $(BR2_PACKAGE_DBUS),dbus) \
 	$(if $(BR2_PACKAGE_OPENSSL),openssl) \
-	$(if $(BR2_PACKAGE_FFTW),fftw) \
+	$(if $(BR2_PACKAGE_FFTW_SINGLE),fftw-single) \
 	$(if $(BR2_PACKAGE_SYSTEMD),systemd)
+
+ifeq ($(BR2_PACKAGE_LIBSAMPLERATE),y)
+PULSEAUDIO_CONF_OPTS += --enable-samplerate
+PULSEAUDIO_DEPENDENCIES += libsamplerate
+else
+PULSEAUDIO_CONF_OPTS += --disable-samplerate
+endif
 
 ifeq ($(BR2_PACKAGE_GDBM),y)
 PULSEAUDIO_CONF_OPTS += --with-database=gdbm
@@ -77,13 +84,6 @@ else
 PULSEAUDIO_CONF_OPTS += --without-soxr
 endif
 
-ifeq ($(BR2_PACKAGE_BLUEZ_UTILS)$(BR2_PACKAGE_SBC),yy)
-PULSEAUDIO_CONF_OPTS += --enable-bluez4
-PULSEAUDIO_DEPENDENCIES += bluez_utils sbc
-else
-PULSEAUDIO_CONF_OPTS += --disable-bluez4
-endif
-
 ifeq ($(BR2_PACKAGE_BLUEZ5_UTILS)$(BR2_PACKAGE_SBC),yy)
 PULSEAUDIO_CONF_OPTS += --enable-bluez5
 PULSEAUDIO_DEPENDENCIES += bluez5_utils sbc
@@ -119,7 +119,10 @@ PULSEAUDIO_CONF_OPTS += --enable-neon-opt=no
 endif
 
 # pulseaudio alsa backend needs pcm/mixer apis
-ifneq ($(BR2_PACKAGE_ALSA_LIB_PCM)$(BR2_PACKAGE_ALSA_LIB_MIXER),yy)
+ifeq ($(BR2_PACKAGE_ALSA_LIB_PCM)$(BR2_PACKAGE_ALSA_LIB_MIXER),yy)
+PULSEAUDIO_DEPENDENCIES += alsa-lib
+PULSEAUDIO_CONF_OPTS += --enable-alsa
+else
 PULSEAUDIO_CONF_OPTS += --disable-alsa
 endif
 
@@ -140,11 +143,17 @@ else
 PULSEAUDIO_CONF_OPTS += --disable-x11
 endif
 
+# ConsoleKit module init failure breaks user daemon startup
+define PULSEAUDIO_REMOVE_CONSOLE_KIT
+	rm -f $(TARGET_DIR)/usr/lib/pulse-$(PULSEAUDIO_VERSION)/modules/module-console-kit.so
+endef
+
 define PULSEAUDIO_REMOVE_VALA
 	rm -rf $(TARGET_DIR)/usr/share/vala
 endef
 
-PULSEAUDIO_POST_INSTALL_TARGET_HOOKS += PULSEAUDIO_REMOVE_VALA
+PULSEAUDIO_POST_INSTALL_TARGET_HOOKS += PULSEAUDIO_REMOVE_VALA \
+	PULSEAUDIO_REMOVE_CONSOLE_KIT
 
 ifeq ($(BR2_PACKAGE_PULSEAUDIO_DAEMON),y)
 define PULSEAUDIO_USERS
@@ -159,9 +168,6 @@ endef
 define PULSEAUDIO_INSTALL_INIT_SYSTEMD
 	$(INSTALL) -D -m 644 package/pulseaudio/pulseaudio.service \
 		$(TARGET_DIR)/usr/lib/systemd/system/pulseaudio.service
-	mkdir -p $(TARGET_DIR)/etc/systemd/system/multi-user.target.wants
-	ln -sf ../../../../usr/lib/systemd/system/pulseaudio.service \
-		$(TARGET_DIR)/etc/systemd/system/multi-user.target.wants/pulseaudio.service
 endef
 
 endif

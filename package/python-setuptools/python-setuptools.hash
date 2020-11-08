@@ -1,2 +1,4 @@
-# Locally calculated
-sha256  99339ac1b4c9bc0a74745d6ff196a207ddfb5f7ca75df76f3d8d081a7f70cecc  python-setuptools-v36.0.1.tar.gz
+# From https://pypi.org/pypi/setuptools/json
+md5  32b6cdce670ce462086d246bea181e9d  setuptools-44.0.0.zip
+sha256  e5baf7723e5bb8382fc146e33032b241efc63314211a3a120aaa55d62d2bb008  setuptools-44.0.0.zip
+sha256  c32a3ac395af6321efd28be73d06a00f0db6ab887d1c21d4fec46128d2056d5a  LICENSE

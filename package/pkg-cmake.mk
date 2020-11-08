@@ -60,8 +60,6 @@ $(2)_INSTALL_OPTS		?= install
 $(2)_INSTALL_STAGING_OPTS	?= DESTDIR=$$(STAGING_DIR) install/fast
 $(2)_INSTALL_TARGET_OPTS		?= DESTDIR=$$(TARGET_DIR) install/fast
 
-$(2)_SRCDIR			= $$($(2)_DIR)/$$($(2)_SUBDIR)
-
 $(3)_SUPPORTS_IN_SOURCE_BUILD ?= YES
 
 
@@ -80,6 +78,14 @@ ifndef $(2)_CONFIGURE_CMDS
 ifeq ($(4),target)
 
 # Configure package for target
+#
+# - We are passing BUILD_SHARED_LIBS because it is documented as a
+#   standard CMake variable to control the build of shared libraries
+#   (see https://cmake.org/cmake/help/v3.8/manual/cmake-variables.7.html#variables-that-change-behavior)
+# - We are not passing BUILD_STATIC_LIBS because it is *not*
+#   documented as a standard CMake variable. If a package supports it,
+#   it must handle it explicitly.
+#
 define $(2)_CONFIGURE_CMDS
 	(mkdir -p $$($$(PKG)_BUILDDIR) && \
 	cd $$($$(PKG)_BUILDDIR) && \
@@ -124,6 +130,7 @@ define $(2)_CONFIGURE_CMDS
 		-DCMAKE_C_FLAGS="$$(HOST_CFLAGS)" \
 		-DCMAKE_CXX_FLAGS="$$(HOST_CXXFLAGS)" \
 		-DCMAKE_EXE_LINKER_FLAGS="$$(HOST_LDFLAGS)" \
+		-DCMAKE_SHARED_LINKER_FLAGS="$$(HOST_LDFLAGS)" \
 		-DCMAKE_ASM_COMPILER="$$(HOSTAS)" \
 		-DCMAKE_C_COMPILER="$$(CMAKE_HOST_C_COMPILER)" \
 		-DCMAKE_CXX_COMPILER="$$(CMAKE_HOST_CXX_COMPILER)" \
@@ -139,6 +146,7 @@ define $(2)_CONFIGURE_CMDS
 		-DBUILD_TEST=OFF \
 		-DBUILD_TESTS=OFF \
 		-DBUILD_TESTING=OFF \
+		-DBUILD_SHARED_LIBS=ON \
 		$$(CMAKE_QUIET) \
 		$$($$(PKG)_CONF_OPTS) \
 	)
@@ -244,8 +252,8 @@ endif
 # based on the toolchainfile.cmake file's location: $(HOST_DIR)/share/buildroot
 # In all the other variables, HOST_DIR will be replaced by RELOCATED_HOST_DIR,
 # so we have to strip "$(HOST_DIR)/" from the paths that contain it.
-$(HOST_DIR)/share/buildroot/toolchainfile.cmake:
-	@mkdir -p $(@D)
+define TOOLCHAIN_CMAKE_INSTALL_FILES
+	@mkdir -p $(HOST_DIR)/share/buildroot
 	sed \
 		-e 's#@@STAGING_SUBDIR@@#$(call qstrip,$(STAGING_SUBDIR))#' \
 		-e 's#@@TARGET_CFLAGS@@#$(call qstrip,$(TARGET_CFLAGS))#' \
@@ -259,7 +267,9 @@ $(HOST_DIR)/share/buildroot/toolchainfile.cmake:
 		-e 's#@@TOOLCHAIN_HAS_FORTRAN@@#$(if $(BR2_TOOLCHAIN_HAS_FORTRAN),1,0)#' \
 		-e 's#@@CMAKE_BUILD_TYPE@@#$(if $(BR2_ENABLE_DEBUG),Debug,Release)#' \
 		$(TOPDIR)/support/misc/toolchainfile.cmake.in \
-		> $@
+		> $(HOST_DIR)/share/buildroot/toolchainfile.cmake
+	$(Q)$(INSTALL) -D -m 0644 support/misc/Buildroot.cmake \
+		$(HOST_DIR)/share/buildroot/Platform/Buildroot.cmake
+endef
 
-$(HOST_DIR)/share/buildroot/Platform/Buildroot.cmake:
-	$(Q)$(INSTALL) -D -m 0644 support/misc/Buildroot.cmake $(@)
+TOOLCHAIN_POST_INSTALL_STAGING_HOOKS += TOOLCHAIN_CMAKE_INSTALL_FILES

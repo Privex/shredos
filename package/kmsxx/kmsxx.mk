@@ -12,11 +12,13 @@ KMSXX_INSTALL_STAGING = YES
 KMSXX_DEPENDENCIES = libdrm host-pkgconf
 KMSXX_CONF_OPTS = -DKMSXX_ENABLE_PYTHON=OFF
 
-# Internal error, aborting at dw2gencfi.c:214 in emit_expr_encoded
-# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=79509
-ifeq ($(BR2_m68k_cf),y)
-KMSXX_CONF_OPTS += -DCMAKE_CXX_FLAGS="$(TARGET_CXXFLAGS) -fno-dwarf2-cfi-asm"
+KMSXX_CXXFLAGS = $(TARGET_CXXFLAGS)
+
+ifeq ($(BR2_TOOLCHAIN_HAS_GCC_BUG_85180),y)
+KMSXX_CXXFLAGS += -O0
 endif
+
+KMSXX_CONF_OPTS += -DCMAKE_CXX_FLAGS="$(KMSXX_CXXFLAGS)"
 
 ifeq ($(BR2_PACKAGE_KMSXX_INSTALL_TESTS),y)
 KMSXX_TESTS = \
@@ -44,12 +46,15 @@ define KMSXX_INSTALL_TARGET_CMDS
 	$(KMSXX_INSTALL_TARGET_TESTS)
 endef
 
+# kmsxx only builds shared or static libraries, so when
+# BR2_SHARED_STATIC_LIBS=y, we don't have any static library to
+# install
 define KMSXX_INSTALL_STAGING_CMDS
 	$(foreach l,$(KMSXX_LIBS),\
 		$(if $(BR2_SHARED_LIBS)$(BR2_SHARED_STATIC_LIBS),
 			$(INSTALL) -D -m 0755 $(@D)/lib/lib$(l).so \
 				$(STAGING_DIR)/usr/lib/lib$(l).so)
-		$(if $(BR2_STATIC_LIBS)$(BR2_SHARED_STATIC_LIBS),
+		$(if $(BR2_STATIC_LIBS),
 			$(INSTALL) -D -m 0755 $(@D)/lib/lib$(l).a \
 				$(STAGING_DIR)/usr/lib/lib$(l).a)
 		mkdir -p $(STAGING_DIR)/usr/include/$(l)

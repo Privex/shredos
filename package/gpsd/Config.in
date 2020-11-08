@@ -18,7 +18,7 @@ menuconfig BR2_PACKAGE_GPSD
 
 	  The D-Bus interface is included if dbus-glib is enabled.
 
-	  http://www.catb.org/gpsd/
+	  https://gpsd.gitlab.io/gpsd
 
 if BR2_PACKAGE_GPSD
 
@@ -38,16 +38,11 @@ config BR2_PACKAGE_GPSD_PROFILING
 	bool "profiling support"
 	depends on BR2_TOOLCHAIN_USES_GLIBC
 	depends on !BR2_aarch64
+	# Needs glibc for ARC arc-2018.03-eng007+ for correct __mcount linking
+	depends on !BR2_arc
 
 comment "profiling support not available with uClibc-based toolchain"
 	depends on !BR2_TOOLCHAIN_USES_GLIBC
-
-config BR2_PACKAGE_GPSD_NTP_SHM
-	bool "NTP time hinting support"
-
-config BR2_PACKAGE_GPSD_PPS
-	bool "PPS time syncing support"
-	select BR2_PACKAGE_GPSD_NTP_SHM
 
 config BR2_PACKAGE_GPSD_USER
 	bool "GPSD privilege revocation user"
@@ -152,6 +147,16 @@ config BR2_PACKAGE_GPSD_GPSCLOCK
 	help
 	  GPSClock support
 
+config BR2_PACKAGE_GPSD_GREIS
+	bool "Greis"
+	help
+	  Greis support
+
+config BR2_PACKAGE_GPSD_ISYNC
+	bool "iSync"
+	help
+	  Spectratime iSync LNRClok/GRCLOK support
+
 config BR2_PACKAGE_GPSD_ITRAX
 	bool "iTrax"
 	help
@@ -209,6 +214,11 @@ config BR2_PACKAGE_GPSD_SIRF
 	bool "SiRF"
 	help
 	  SiRF binary support
+
+config BR2_PACKAGE_GPSD_SKYTRAQ
+	bool "Skytraq"
+	help
+	  Skytraq support
 
 config BR2_PACKAGE_GPSD_SUPERSTAR2
 	bool "SuperStarII"
