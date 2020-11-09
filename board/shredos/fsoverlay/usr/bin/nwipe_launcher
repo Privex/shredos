@@ -1,9 +1,27 @@
-#!/bin/sh
+#!/bin/ash
+
+#######
+# extractpr [param]
+# get_cmd [param]
+# has_cmd [param]
+# has_cmd_word [word]
+source /usr/bin/cmdline.sh
 
 # trap the ctrl+c signal
 trap "echo" INT
 
-while true
-do
-    /usr/bin/nwipe
-done
+if has_cmd_word autowipe autonuke autoformat noninteractive autoerase; then
+  method="zero"
+  rounds=1
+  nwipe_verify="last"
+  has_cmd method && method="$(get_cmd method)"
+  has_cmd rounds && rounds="$(get_cmd rounds)"
+  has_cmd nwipe_verify && nwipe_verify="$(get_cmd nwipe_verify)"
+  /usr/bin/nwipe --autonuke -m "$method" -r "$rounds" --verify="$nwipe_verify" --nowait
+  shutdown -h -P now
+else
+    while true
+    do
+        /usr/bin/nwipe
+    done
+fi

@@ -1,5 +1,7 @@
 # ShredOS
 
+![ShredOS Serial vs VGA Screenshot](https://cdn.privex.io/github/shredos/shredos-serial-vga.png)
+
 ## About ShredOS
 
 ShredOS is a USB bootable small linux distribution with the sole purpose of securely erasing your
@@ -32,6 +34,92 @@ Nwipe also includes the following pseudo random number generators:
 * twister
 * isaac
 
+## Download Pre-built ShredOS images
+
+Pre-build ShredOS images are made available by [Privex - a privacy focused server hosting company](https://www.privex.io), which
+is the company that maintains this fork of ShredOS.
+
+* [ShredOS Bootable ISO](https://files.privex.io/images/iso/shredos/v1.1/shredos.iso)
+* [ShredOS Bootable Raw IMG File](https://files.privex.io/images/iso/shredos/v1.1/shredos.img)
+* [ShredOS Self-contained Kernel Image](https://files.privex.io/images/iso/shredos/v1.1/shredos-kernel)
+* [ShredOS Pre-configured PXE boot environment using PXELinux](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz)
+
+## Using ShredOS with Syslinux (ISOLINUX/PXELINUX etc.) and other boot loaders
+
+ShredOS was built to be self-contained in a single kernel image, so it doesn't require an initrd, a squashfs, or any other files
+to work.
+
+This means it can be easily used with bootloaders such as PXELINUX, ISOLINUX, GRUB and others - simply specify
+point your bootloader to the [ShredOS Kernel Image](https://files.privex.io/images/iso/shredos/v1.1/shredos-kernel),
+and add any [kernel boot flags](#Kernel_Boot_Flags) as required.
+
+### Example ISOLINUX/PXELINUX Config
+
+The below config should work with both ISOLINUX and PXELINUX. It's designed for use with a serial console, which is common
+with dedicated servers via Serial-over-LAN using IPMI.
+
+For use with a system that has a standard VGA/HDMI/Integrated monitor, remove the first `SERIAL` line, change the flag
+`console=ttyS0,9600n8` to `console=tty0` and remove the word `simple` from the flags.
+
+```s
+SERIAL 0 9600 0x008
+
+# search path for the c32 support libraries (libcom32, libutil etc.)
+path sys/
+
+UI menu.c32
+
+DEFAULT shredos
+
+LABEL shredos
+  KERNEL shredos/shredos
+  APPEND console=ttyS0,9600n8 simple quiet loglevel=0 console_baud=0
+  # Fully automatic formatting of ALL DISKS
+  # APPEND console=ttyS0,9600n8 simple autonuke method=zero rounds=1 nwipe_verify=last loglevel=0 console_baud=0
+
+TIMEOUT 10
+```
+
+## Kernel Boot Flags
+
+In this fork by Privex, we've added many kernel flags to assist with customisable automated formatting of servers / network attached systems, especially via PXE.
+
+### Boot CMD options
+
+* `runcmd="/bin/some_command"`   - Override the binary ran, instead of nwipe_launcher
+* `nowipe|ttyshell|shelltty|usetty|enabletty`   - All of these boot flags are the same - they force
+  a normal console to be launched on boot instead of nwipe_launcher
+* `console_baud`                 - Override the console baud rate, which is normally auto-detected from the console= arg
+* `simple|basic|vt100`           - Use the VT100 console, which disables fancy colours and symbols
+* `term="vt100"`                 - Specify a custom console type to use, e.g. vt100
+
+### NWIPE Options
+
+* `autonuke|autowipe|autoformat|noninteractive|autoerase` - Automatically format ALL DRIVES on the system.
+
+* `rounds=1`                      - Number of times to run 'method'
+
+* `nwipe_verify=last`             - Whether to perform verification of erasure (default: last)
+
+    ```yml
+    off   - Do not verify
+    last  - Verify after the last pass
+    all   - Verify every pass
+    ```
+
+* `method=zero`                   - Method to use to auto-wipe the drives (default: zero)
+
+    **Available Methods:**
+
+    ```yml
+    dod522022m / dod       - 7 pass DOD 5220.22-M method
+    dodshort / dod3pass    - 3 pass DOD method
+    gutmann                - Peter Gutmann's Algorithm
+    ops2                   - RCMP TSSIT OPS-II
+    random / prng / stream - PRNG Stream
+    zero / quick           - Overwrite with zeros
+    ```
+
 ## Compiling ShredOS and burning to USB stick
 
 The ShredOS system is built using buildroot.
@@ -54,7 +142,6 @@ For building on Ubuntu 18.04 Bionic, the following packages are known to be requ
 * `mtools`
 * `pkg-config`
 
-
 Additional packages may be required, you may re-run `make` after installing any missing dependency that caused
 the build to fail, and it should resume roughly from where it left off.
 
@@ -69,6 +156,28 @@ make shredos_defconfig
 make
 ls output/images/shredos*.img
 ```
+
+### Building an ISO
+
+First you'll need `genisoimage` which provides `mkisofs`
+
+```sh
+apt install genisoimage
+```
+
+Copy the kernel (`bzImage`) into the iso folder as the name `shredos`
+
+```sh
+cp output/images/bzImage iso/shredos
+```
+
+Now use mkisofs to generate an ISO image from the `iso` folder
+
+```sh
+mkisofs -o output/images/shredos.iso -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table iso
+```
+
+You'll now have a bootable ISO inside of output/images
 
 ## Developer Notes
 
